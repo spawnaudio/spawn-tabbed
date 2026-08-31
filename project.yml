@@ -32,6 +32,7 @@ targets:
         SWIFT_OBJC_BRIDGING_HEADER: Sources/Accessibility/Tabbed-Bridging-Header.h
         COMBINE_HIDPI_IMAGES: YES
         ENABLE_USER_SCRIPT_SANDBOXING: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
   TabbedTests:
     type: bundle.unit-test

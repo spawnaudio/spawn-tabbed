@@ -80,12 +80,6 @@ extension TabGroupController {
     }
 
     func targetGroupForNewWindow() -> TabGroup? {
-        if let frontmost = frontmostGroup() {
-            return frontmost
-        }
-        if let mostRecentGroup, groups.contains(where: { $0 === mostRecentGroup }) {
-            return mostRecentGroup
-        }
-        return groups.last
+        focusedGroup() ?? groups.last
     }
 }

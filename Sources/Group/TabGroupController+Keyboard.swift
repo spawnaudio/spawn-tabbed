@@ -3,7 +3,7 @@ import AppKit
 extension TabGroupController: KeyboardShortcutMonitorDelegate {
     /// Activate the tab at `index` in the group the user is currently focused on.
     func keyboardShortcutSelectTab(at index: Int) -> Bool {
-        guard let group = focusedGroup(),
+        guard let group = focusedGroupOnActiveSpace(),
               group.windows.indices.contains(index) else {
             return false
         }
@@ -16,7 +16,7 @@ extension TabGroupController: KeyboardShortcutMonitorDelegate {
 
     /// Step to the adjacent tab, wrapping around the ends.
     func keyboardShortcutCycleTab(forward: Bool) -> Bool {
-        guard let group = focusedGroup(), group.windows.count > 1 else {
+        guard let group = focusedGroupOnActiveSpace(), group.windows.count > 1 else {
             return false
         }
         let count = group.windows.count
@@ -27,9 +27,9 @@ extension TabGroupController: KeyboardShortcutMonitorDelegate {
         return true
     }
 
-    /// The on-screen group whose active window currently holds focus.
-    private func focusedGroup() -> TabGroup? {
-        guard let group = frontmostGroup(), isGroupOnActiveSpace(group) else {
+    /// The focused group, provided it lives on the space the user is viewing.
+    private func focusedGroupOnActiveSpace() -> TabGroup? {
+        guard let group = focusedGroup(), isGroupOnActiveSpace(group) else {
             return nil
         }
         return group

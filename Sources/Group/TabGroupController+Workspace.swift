@@ -41,6 +41,7 @@ extension TabGroupController {
                 remove(window.id, from: group, keepWindowObserved: false)
             }
         }
+        focusTracker.applicationTerminated(pid)
     }
 
     func pruneDeadWindows() {
@@ -63,6 +64,9 @@ extension TabGroupController {
     }
 
     @objc func applicationDidActivate(_ notification: Notification) {
+        if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
+            trackActivation(app.processIdentifier)
+        }
         pruneDeadWindows()
         syncPanelZOrderWithFrontmostGroupSoon()
     }

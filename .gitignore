@@ -10,5 +10,8 @@ Tabbed.xcodeproj/
 # macOS
 .DS_Store
 
+# local agent runtime telemetry
+runs/
+
 # Keep winmux reference out of this project's history
 winmux/

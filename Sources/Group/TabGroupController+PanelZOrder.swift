@@ -1,19 +1,6 @@
 import AppKit
 
 extension TabGroupController {
-    func frontmostGroup() -> TabGroup? {
-        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
-        let pid = app.processIdentifier
-        guard pid != ownPID,
-              let focusedID = engine.focusedOrMainWindowID(for: pid) else {
-            return nil
-        }
-        return groups.first { group in
-            guard let active = group.activeWindow else { return false }
-            return active.pid == pid && active.id == focusedID
-        }
-    }
-
     func syncPanelZOrderWithFrontmostGroupSoon() {
         DispatchQueue.main.async { [weak self] in
             self?.syncPanelZOrderWithFrontmostGroup()
@@ -21,24 +8,24 @@ extension TabGroupController {
     }
 
     func syncPanelZOrderWithFrontmostGroup() {
-        let frontmost = frontmostGroup()
+        let focused = focusedGroup()
+        let focusedID = focused?.id
 
-        if let frontmost, isGroupOnActiveSpace(frontmost) {
-            markRecentlyUsed(frontmost)
-            positionPanel(for: frontmost)
+        if let focused, isGroupOnActiveSpace(focused) {
+            positionPanel(for: focused)
         }
 
-        for group in groups where group !== frontmost {
-            reassertPanelZOrder(for: group)
+        for group in groups where group.id != focusedID {
+            reassertPanelZOrder(for: group, focusedID: focusedID)
         }
     }
 
-    func reassertPanelZOrder(for group: TabGroup) {
+    func reassertPanelZOrder(for group: TabGroup, focusedID: UUID? = nil) {
         guard isGroupOnActiveSpace(group) else { return }
 
         let frontmostWindowID = engine.frontmostWindowID()
         if let active = group.activeWindow,
-           frontmostGroup() === group || frontmostWindowID == active.id {
+           (focusedID ?? focusedGroup()?.id) == group.id || frontmostWindowID == active.id {
             group.panel.order(.above, relativeTo: Int(active.id))
             return
         }
@@ -48,9 +35,5 @@ extension TabGroupController {
         } else {
             group.panel.orderOut(nil)
         }
-    }
-
-    func markRecentlyUsed(_ group: TabGroup) {
-        mostRecentGroup = group
     }
 }

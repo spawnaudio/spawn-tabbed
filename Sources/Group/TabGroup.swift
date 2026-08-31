@@ -33,6 +33,11 @@ final class TabGroup {
         windows.contains { $0.id == id }
     }
 
+    /// What the focus tracker sees: the group's active tab, by id and pid.
+    var focusSnapshot: FocusTracker.GroupSnapshot? {
+        activeWindow.map { FocusTracker.GroupSnapshot(id: id, activeWindowID: $0.id, pid: $0.pid) }
+    }
+
     var hasRoomAbove: Bool {
         let screen = NSScreen.screens.first { $0.frame.intersects(contentFrame) } ?? NSScreen.main
         let ceiling = screen?.visibleFrame.maxY ?? contentFrame.maxY

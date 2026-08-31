@@ -22,7 +22,6 @@ extension TabGroupController {
         group.windows.append(window)
         group.activeIndex = group.windows.count - 1
         observeWindows(in: group)
-        markRecentlyUsed(group)
         updateFocusObservers()
         applyLayout(for: group)
     }
@@ -127,9 +126,6 @@ extension TabGroupController {
             engine.setFrame(group.contentFrame, of: window)
         }
         groups.removeAll { $0 === group }
-        if mostRecentGroup === group {
-            mostRecentGroup = groups.last
-        }
         updateFocusObservers()
     }
 }

@@ -23,6 +23,10 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
         monitor.delegate = self
         return monitor
     }()
+    lazy var focusTracker = FocusTracker(
+        groups: { [weak self] in self?.groups.compactMap(\.focusSnapshot) ?? [] },
+        zOrderedWindowIDs: { [weak self] in self?.engine.onScreenWindowFrames(excluding: []).map(\.id) ?? [] }
+    )
 
     var groups: [TabGroup] = []
     var autoAddNewWindowsToStack = AppSettings.autoAddNewWindowsToStack
@@ -33,7 +37,6 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
     private var dragGrabOffset: CGSize = .zero
     private var dragTargets: [WindowFrame] = []
     var isApplyingLayout = false
-    weak var mostRecentGroup: TabGroup?
 
     var activeMoveTimer: Timer?
     weak var activeMoveGroup: TabGroup?
@@ -45,13 +48,39 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
         observer.onEvent = { [weak self] id, notification in
             self?.handleWindowNotification(id: id, notification: notification)
         }
-        appFocusObserver.onEvent = { [weak self] _, _, _ in
-            self?.syncPanelZOrderWithFrontmostGroupSoon()
+        appFocusObserver.onEvent = { [weak self] pid, notification, element in
+            guard let self else { return }
+            self.feedFocusEvent(pid: pid, notification: notification, element: element)
+            self.syncPanelZOrderWithFrontmostGroupSoon()
         }
         windowCreationObserver.onEvent = { [weak self] pid, notification, element in
             guard notification == kAXWindowCreatedNotification else { return }
             self?.handleWindowCreated(pid: pid, element: element)
         }
+    }
+
+    /// Route one AX app-level event into the focus tracker (ADR-0001).
+    func feedFocusEvent(pid: pid_t, notification: String, element: AXUIElement) {
+        guard pid != ownPID else { return }
+        if notification == kAXApplicationActivatedNotification {
+            trackActivation(pid)
+            return
+        }
+        // The observed element is the app, not the window — re-resolve focus.
+        if let windowID = engine.focusedOrMainWindowID(for: pid) {
+            focusTracker.windowFocused(windowID, in: pid)
+        }
+    }
+
+    func trackActivation(_ pid: pid_t) {
+        guard pid != ownPID else { return }
+        focusTracker.applicationActivated(pid)
+    }
+
+    /// The group the focus tracker currently names, if it still exists.
+    func focusedGroup() -> TabGroup? {
+        guard let id = focusTracker.focusedGroupID() else { return nil }
+        return groups.first { $0.id == id }
     }
 
     func start() {
@@ -168,7 +197,6 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
         }
 
         observeWindows(in: destination)
-        markRecentlyUsed(destination)
         updateFocusObservers()
         applyLayout(for: destination)
     }

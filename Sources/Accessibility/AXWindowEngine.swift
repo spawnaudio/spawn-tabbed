@@ -66,14 +66,23 @@ final class AXWindowEngine: WindowEngine {
         AXUIElementSetMessagingTimeout(appElement, 1.0)
 
         if let focused = copyAXElementAttribute(kAXFocusedWindowAttribute, from: appElement),
-           let id = windowID(for: focused) {
+           let id = windowID(of: focused) {
             return id
         }
         if let main = copyAXElementAttribute(kAXMainWindowAttribute, from: appElement),
-           let id = windowID(for: main) {
+           let id = windowID(of: main) {
             return id
         }
         return nil
+    }
+
+    private func windowID(of element: AXUIElement) -> WindowID? {
+        var resolved = CGWindowID(0)
+        guard _AXUIElementGetWindow(element, &resolved) == .success,
+              resolved != 0 else {
+            return nil
+        }
+        return resolved
     }
 
     func frontmostWindowID() -> WindowID? {
@@ -197,15 +206,6 @@ final class AXWindowEngine: WindowEngine {
             return nil
         }
         return (value as! AXUIElement)
-    }
-
-    private func windowID(for element: AXUIElement) -> WindowID? {
-        var resolved = CGWindowID(0)
-        guard _AXUIElementGetWindow(element, &resolved) == .success,
-              resolved != 0 else {
-            return nil
-        }
-        return resolved
     }
 
     private func copyCGPointAttribute(_ attribute: String, from element: AXUIElement) -> CGPoint? {
