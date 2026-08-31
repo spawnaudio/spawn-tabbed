@@ -23,17 +23,12 @@ extension TabGroupController {
     func reassertPanelZOrder(for group: TabGroup, focusedID: UUID? = nil) {
         guard isGroupOnActiveSpace(group) else { return }
 
-        let frontmostWindowID = engine.frontmostWindowID()
-        if let active = group.activeWindow,
-           (focusedID ?? focusedGroup()?.id) == group.id || frontmostWindowID == active.id {
-            group.panel.order(.above, relativeTo: Int(active.id))
-            return
-        }
-
-        if let frontmostWindowID {
-            group.panel.order(.below, relativeTo: Int(frontmostWindowID))
-        } else {
-            group.panel.orderOut(nil)
-        }
+        let placement = PanelZOrderPolicy.resolve(
+            isCompact: group.useCompact,
+            isFocused: (focusedID ?? focusedGroup()?.id) == group.id,
+            frontmost: engine.frontmostWindowID(),
+            activeWindow: group.activeWindow?.id
+        )
+        group.panel.apply(placement)
     }
 }

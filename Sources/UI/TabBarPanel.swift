@@ -61,6 +61,24 @@ final class TabBarPanel: NSPanel {
         setFrame(frame, display: true)
     }
 
+    /// Apply a z-order decision from `PanelZOrderPolicy`.
+    func apply(_ placement: PanelZOrder) {
+        switch placement {
+        case .float:
+            level = .floating
+            orderFront(nil)
+        case .aboveActive(let id):
+            level = .normal
+            order(.above, relativeTo: Int(id))
+        case .belowFrontmost(let id):
+            level = .normal
+            order(.below, relativeTo: Int(id))
+        case .hide:
+            level = .normal
+            orderOut(nil)
+        }
+    }
+
     /// Configure resting and expanded frames for the current layout.
     func applyLayout(compact: Bool, resting: CGRect, expanded: CGRect) {
         isCompact = compact
