@@ -40,7 +40,7 @@ extension TabGroupController {
     }
 
     func applyLayout(for group: TabGroup) {
-        guard isGroupOnActiveSpace(group) else {
+        guard isGroupOnActiveSpace(group), !group.isMinimized else {
             group.panel.hide()
             group.syncViewModel()
             return
@@ -99,6 +99,10 @@ extension TabGroupController {
 
     func remove(_ id: WindowID, from group: TabGroup, keepWindowObserved: Bool) {
         guard let idx = group.windows.firstIndex(where: { $0.id == id }) else { return }
+        if idx == group.activeIndex {
+            // The minimised tab is gone; show whichever tab takes its place.
+            group.isMinimized = false
+        }
         group.windows.remove(at: idx)
         if !keepWindowObserved {
             observer.unobserve(id)
@@ -117,6 +121,13 @@ extension TabGroupController {
 
         applyLayout(for: group)
         updateFocusObservers()
+    }
+
+    /// Dissolve every group, returning parked windows to the shared frame.
+    func restoreAllWindows() {
+        for group in groups {
+            dissolve(group)
+        }
     }
 
     func dissolve(_ group: TabGroup) {

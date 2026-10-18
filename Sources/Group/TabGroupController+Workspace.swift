@@ -10,6 +10,45 @@ extension TabGroupController {
         )
     }
 
+    /// Wake, unlock, and display changes can drop or misplace strips (upstream #2).
+    func observeDisplayChanges() {
+        let workspace = NSWorkspace.shared.notificationCenter
+        workspace.addObserver(self, selector: #selector(displayEnvironmentChanged),
+                              name: NSWorkspace.screensDidWakeNotification, object: nil)
+        workspace.addObserver(self, selector: #selector(displayEnvironmentChanged),
+                              name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(displayEnvironmentChanged),
+                                               name: NSApplication.didChangeScreenParametersNotification,
+                                               object: nil)
+        DistributedNotificationCenter.default().addObserver(self, selector: #selector(displayEnvironmentChanged),
+                                                            name: .init("com.apple.screenIsUnlocked"),
+                                                            object: nil)
+    }
+
+    @objc func displayEnvironmentChanged() {
+        // Give the window server a moment to settle after wake/unlock.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.relayoutAllGroups()
+        }
+    }
+
+    func relayoutAllGroups() {
+        pruneDeadWindows()
+        for group in groups {
+            // macOS may have moved the active window (e.g. a display went away).
+            if let active = group.activeWindow, !group.isMinimized,
+               let frame = engine.frame(of: active) {
+                group.contentFrame = frame
+            }
+            if isGroupOnActiveSpace(group) {
+                applyLayout(for: group)
+            } else {
+                group.panel.hide()
+            }
+        }
+        syncPanelZOrderWithFrontmostGroupSoon()
+    }
+
     func observeApplicationChanges() {
         NSWorkspace.shared.notificationCenter.addObserver(
             self,

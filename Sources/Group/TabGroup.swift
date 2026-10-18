@@ -16,6 +16,9 @@ final class TabGroup {
     var spaceID: UInt64?
     var moveAnchorFrame: CGRect?
 
+    /// The active tab is in the Dock; the strip stays hidden until it returns.
+    var isMinimized = false
+
     init(windows: [ManagedWindow], activeIndex: Int, contentFrame: CGRect, spaceID: UInt64?) {
         self.windows = windows
         self.activeIndex = activeIndex

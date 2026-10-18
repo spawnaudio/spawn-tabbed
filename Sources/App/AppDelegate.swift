@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var autoAddMenuItem: NSMenuItem?
     private var compactModeMenuItem: NSMenuItem?
+    private var trustPollTimer: Timer?
     private let engine = AXWindowEngine()
     private lazy var controller = TabGroupController(engine: engine)
 
@@ -20,10 +21,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let trusted = ensureAccessibilityPermission()
         NSLog("[Tabbed] accessibility trusted = \(trusted)")
         guard trusted else {
-            // Keep the menu item available while the user grants access.
+            // Keep the menu item available while the user grants access,
+            // and start as soon as it is granted — no relaunch needed.
             statusItem?.button?.appearsDisabled = true
+            trustPollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.startWhenTrusted() }
+            }
             return
         }
+        startController()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Inactive tabs are parked off-screen; put every window back first.
+        controller.restoreAllWindows()
+    }
+
+    private func startWhenTrusted() {
+        guard AXIsProcessTrusted() else { return }
+        trustPollTimer?.invalidate()
+        trustPollTimer = nil
+        statusItem?.button?.appearsDisabled = false
+        startController()
+    }
+
+    private func startController() {
         controller.start()
         NSLog("[Tabbed] controller started — global ⌘-drag monitor active")
     }

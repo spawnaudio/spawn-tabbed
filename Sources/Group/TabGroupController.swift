@@ -88,6 +88,7 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
         keyboardMonitor.start()
         observeSpaceChanges()
         observeApplicationChanges()
+        observeDisplayChanges()
         if autoAddNewWindowsToStack {
             observeRunningAppsForWindowCreation()
         }

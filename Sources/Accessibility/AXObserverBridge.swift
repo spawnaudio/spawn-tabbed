@@ -49,7 +49,9 @@ final class AXObserverBridge {
         kAXMovedNotification,
         kAXResizedNotification,
         kAXUIElementDestroyedNotification,
-        kAXWindowMiniaturizedNotification
+        kAXWindowMiniaturizedNotification,
+        kAXWindowDeminiaturizedNotification,
+        kAXTitleChangedNotification
     ]
 
     private static let callback: AXObserverCallback = { _, element, notification, refcon in
