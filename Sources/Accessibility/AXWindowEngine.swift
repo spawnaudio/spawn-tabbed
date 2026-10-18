@@ -122,6 +122,11 @@ final class AXWindowEngine: WindowEngine {
         NSRunningApplication(processIdentifier: window.pid)?.activate(options: [])
     }
 
+    func close(_ window: ManagedWindow) {
+        guard let button = copyAXElementAttribute(kAXCloseButtonAttribute, from: window.element) else { return }
+        AXUIElementPerformAction(button, kAXPressAction as CFString)
+    }
+
     func isAlive(_ window: ManagedWindow) -> Bool {
         guard NSRunningApplication(processIdentifier: window.pid) != nil else { return false }
         var resolved = CGWindowID(0)

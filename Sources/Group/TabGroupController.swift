@@ -8,6 +8,7 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
     private lazy var dragMonitor: DragMonitor = {
         let m = DragMonitor(engine: engine)
         m.delegate = self
+        m.modifiers = config.dragModifiers
         return m
     }()
 
@@ -98,6 +99,10 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
     func reloadConfig() {
         config = TabbedConfig.load()
         keyboardMonitor.apply(settings: config.shortcuts)
+        dragMonitor.modifiers = config.dragModifiers
+        for group in groups {
+            group.panel.theme = config.theme
+        }
     }
 
     // MARK: - DragMonitorDelegate
@@ -203,6 +208,7 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
     }
 
     private func wire(_ group: TabGroup) {
+        group.panel.theme = config.theme
         group.viewModel.onSelect = { [weak self, weak group] id in
             guard let self, let group else { return }
             self.selectTab(id, in: group)
@@ -210,6 +216,15 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
         group.viewModel.onClose = { [weak self, weak group] id in
             guard let self, let group else { return }
             self.untab(id, from: group)
+        }
+        group.viewModel.onCloseWindow = { [weak self, weak group] id in
+            guard let self, let window = group?.windows.first(where: { $0.id == id }) else { return }
+            // The destroyed notification removes it from the group.
+            self.engine.close(window)
+        }
+        group.viewModel.onReorder = { [weak self, weak group] id, index in
+            guard let self, let group else { return }
+            self.reorder(id, to: index, in: group)
         }
         group.viewModel.onActivateActive = { [weak self, weak group] in
             guard let self, let group, let active = group.activeWindow else { return }

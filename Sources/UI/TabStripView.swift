@@ -4,13 +4,22 @@ struct TabStripView: View {
     @ObservedObject var model: TabGroupViewModel
     @State private var hoveredID: WindowID?
     @State private var dragStartMouse: CGPoint?
+    @State private var dragMode: DragMode?
+
+    /// A strip drag either moves the whole group or reorders one tab.
+    private enum DragMode {
+        case move
+        case reorder(WindowID)
+    }
 
     var body: some View {
-        bar
-            .contentShape(Rectangle())
-            .onTapGesture { model.activateActive() }
-            .gesture(moveGesture)
-            .animation(.easeOut(duration: 0.18), value: isShowingPill)
+        GeometryReader { proxy in
+            bar
+                .contentShape(Rectangle())
+                .onTapGesture { model.activateActive() }
+                .gesture(dragGesture(stripWidth: proxy.size.width))
+                .animation(.easeOut(duration: 0.18), value: isShowingPill)
+        }
     }
 
     private var bar: some View {
@@ -54,9 +63,14 @@ struct TabStripView: View {
                 )
                 .onHover { hoveredID = $0 ? tab.id : (hoveredID == tab.id ? nil : hoveredID) }
                 .onTapGesture { model.select(tab.id) }
+                .contextMenu {
+                    Button("Remove from Group") { model.close(tab.id) }
+                    Button("Close Window") { model.closeWindow(tab.id) }
+                }
             }
         }
         .frame(height: Theme.tabHeight)
+        .animation(.easeOut(duration: 0.15), value: model.tabs.map(\.id))
     }
 
     private var compactPill: some View {
@@ -76,30 +90,60 @@ struct TabStripView: View {
             if let img = tab.appIcon() {
                 Image(nsImage: img).resizable()
             } else {
-                RoundedRectangle(cornerRadius: 3).fill(.white.opacity(0.2))
+                RoundedRectangle(cornerRadius: 3).fill(Color.primary.opacity(0.2))
             }
         }
         .frame(width: Theme.compactIconSize, height: Theme.compactIconSize)
         .opacity(isActive ? 1.0 : 0.45)
     }
 
-    private var moveGesture: some Gesture {
-        // The panel moves during the drag, so use screen coordinates.
+    private func dragGesture(stripWidth: CGFloat) -> some Gesture {
+        // The panel moves during a group move, so use screen coordinates for it.
+        // Reordering keeps the panel still, so the panel-local x is enough.
         DragGesture(minimumDistance: 3, coordinateSpace: .global)
-            .onChanged { _ in
-                let mouse = NSEvent.mouseLocation
-                if dragStartMouse == nil {
-                    dragStartMouse = mouse
-                    model.moveBegan()
+            .onChanged { value in
+                if dragMode == nil {
+                    let horizontal = abs(value.translation.width) > abs(value.translation.height)
+                    if horizontal, let id = tabID(at: value.startLocation.x, stripWidth: stripWidth) {
+                        dragMode = .reorder(id)
+                    } else {
+                        dragMode = .move
+                        dragStartMouse = NSEvent.mouseLocation
+                        model.moveBegan()
+                    }
                 }
-                let start = dragStartMouse ?? mouse
-                model.moveChanged(CGSize(width: mouse.x - start.x,
-                                         height: mouse.y - start.y))
+                switch dragMode {
+                case .reorder(let id):
+                    if let index = slotIndex(at: value.location.x, stripWidth: stripWidth) {
+                        model.reorder(id, to: index)
+                    }
+                case .move, nil:
+                    let mouse = NSEvent.mouseLocation
+                    let start = dragStartMouse ?? mouse
+                    model.moveChanged(CGSize(width: mouse.x - start.x,
+                                             height: mouse.y - start.y))
+                }
             }
             .onEnded { _ in
+                if case .move = dragMode { model.moveEnded() }
+                dragMode = nil
                 dragStartMouse = nil
-                model.moveEnded()
             }
+    }
+
+    /// Tab slot under panel-local `x`. Nil for the compact pill or a
+    /// scrolling strip, where slots don't map to positions.
+    // ponytail: no reorder while the strip overflows and scrolls; add scroll-offset tracking if needed.
+    private func slotIndex(at x: CGFloat, stripWidth: CGFloat) -> Int? {
+        guard !isShowingPill, !model.tabs.isEmpty else { return nil }
+        let layout = tabLayout(forContainerWidth: stripWidth - Theme.stripPadding * 2)
+        guard !layout.overflowing else { return nil }
+        let slot = Int((x - Theme.stripPadding) / (layout.width + Theme.tabSpacing))
+        return min(max(slot, 0), model.tabs.count - 1)
+    }
+
+    private func tabID(at x: CGFloat, stripWidth: CGFloat) -> WindowID? {
+        slotIndex(at: x, stripWidth: stripWidth).map { model.tabs[$0].id }
     }
 
     private func tabLayout(forContainerWidth containerWidth: CGFloat) -> (width: CGFloat, overflowing: Bool) {
@@ -131,22 +175,29 @@ struct VisualEffectBackground: NSViewRepresentable {
 }
 
 private extension View {
-    /// Liquid Glass on macOS 26+, HUD material fallback otherwise.
-    @ViewBuilder
-    func glassBar() -> some View {
+    func glassBar() -> some View { modifier(GlassBar()) }
+}
+
+/// Liquid Glass on macOS 26+, HUD material fallback otherwise; tinted to
+/// match the strip's light or dark appearance.
+private struct GlassBar: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: Theme.stripCornerRadius, style: .continuous)
+        let dark = scheme == .dark
         if #available(macOS 26.0, *) {
-            self
-                .background(shape.fill(.black.opacity(0.45)))
+            content
+                .background(shape.fill(dark ? Color.black.opacity(0.45) : Color.white.opacity(0.35)))
                 .glassEffect(.regular, in: shape)
         } else {
-            self.background(
+            content.background(
                 ZStack {
-                    VisualEffectBackground(material: .hudWindow, blending: .behindWindow)
-                    shape.fill(.black.opacity(0.18))
+                    VisualEffectBackground(material: dark ? .hudWindow : .menu, blending: .behindWindow)
+                    shape.fill(dark ? Color.black.opacity(0.18) : Color.white.opacity(0.25))
                 }
                 .clipShape(shape)
-                .overlay(shape.stroke(.white.opacity(0.10), lineWidth: 1))
+                .overlay(shape.stroke(Color.primary.opacity(0.10), lineWidth: 1))
             )
         }
     }

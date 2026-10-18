@@ -20,11 +20,19 @@ struct ShortcutSettings: Equatable {
     )
 }
 
+/// Tab strip colour scheme.
+enum StripTheme: String, Equatable {
+    case system, dark, light
+}
+
 /// Top-level user configuration.
 struct TabbedConfig: Equatable {
     var shortcuts: ShortcutSettings
+    /// Modifier(s) held while dragging a window onto another to tab it.
+    var dragModifiers: CGEventFlags
+    var theme: StripTheme
 
-    static let `default` = TabbedConfig(shortcuts: .default)
+    static let `default` = TabbedConfig(shortcuts: .default, dragModifiers: .maskCommand, theme: .system)
 }
 
 extension TabbedConfig {
@@ -79,7 +87,17 @@ extension TabbedConfig {
             shortcuts.modifiers = modifiers
         }
 
-        return TabbedConfig(shortcuts: shortcuts)
+        var config = TabbedConfig.default
+        config.shortcuts = shortcuts
+        if let raw = tables["drag"]?["modifier"]?.stringValue,
+           let modifiers = parseModifiers(raw) {
+            config.dragModifiers = modifiers
+        }
+        if let raw = tables["appearance"]?["theme"]?.stringValue,
+           let theme = StripTheme(rawValue: raw.lowercased()) {
+            config.theme = theme
+        }
+        return config
     }
 
     /// The documented default file, written on first launch.
@@ -100,6 +118,15 @@ extension TabbedConfig {
 
     # modifier + Tab / modifier + Shift + Tab cycle through the group.
     cycle = true
+
+    [drag]
+    # Hold this while dragging a window onto another to tab them together.
+    # Same names as above, e.g. "cmd", "ctrl+alt".
+    modifier = "cmd"
+
+    [appearance]
+    # Tab strip colours: "system" follows macOS, or force "dark" / "light".
+    theme = "system"
 
     """
 

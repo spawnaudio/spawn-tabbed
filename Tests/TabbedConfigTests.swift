@@ -67,3 +67,31 @@ final class TabbedConfigTests: XCTestCase {
         XCTAssertEqual(config.shortcuts.modifiers, .maskAlternate)
     }
 }
+
+final class TabbedConfigDragAndThemeTests: XCTestCase {
+    func testDragModifierAndThemeParse() {
+        let config = TabbedConfig.parse("""
+        [drag]
+        modifier = "ctrl+alt"
+        [appearance]
+        theme = "Light"
+        """)
+        XCTAssertEqual(config.dragModifiers, [.maskControl, .maskAlternate])
+        XCTAssertEqual(config.theme, .light)
+    }
+
+    func testUnknownValuesKeepDefaults() {
+        let config = TabbedConfig.parse("""
+        [drag]
+        modifier = "hyper"
+        [appearance]
+        theme = "purple"
+        """)
+        XCTAssertEqual(config.dragModifiers, .maskCommand)
+        XCTAssertEqual(config.theme, .system)
+    }
+
+    func testTemplateParsesToDefaults() {
+        XCTAssertEqual(TabbedConfig.parse(TabbedConfig.template), .default)
+    }
+}

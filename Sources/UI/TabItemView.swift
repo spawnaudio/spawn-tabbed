@@ -18,7 +18,7 @@ struct TabItemView: View {
                     .font(.system(size: Theme.titleSize, weight: isActive ? .semibold : .medium))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .foregroundStyle(.white.opacity(textOpacity))
+                    .foregroundStyle(Color.primary.opacity(textOpacity))
             }
             .padding(.horizontal, 22)
 
@@ -43,7 +43,7 @@ struct TabItemView: View {
                 .frame(width: Theme.iconSize, height: Theme.iconSize)
         } else {
             RoundedRectangle(cornerRadius: 3)
-                .fill(.white.opacity(0.2))
+                .fill(Color.primary.opacity(0.2))
                 .frame(width: Theme.iconSize, height: Theme.iconSize)
         }
     }
@@ -52,13 +52,14 @@ struct TabItemView: View {
         Button(action: onClose) {
             Image(systemName: "xmark")
                 .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(.white.opacity(closeHovered ? 0.95 : 0.6))
+                .foregroundStyle(Color.primary.opacity(closeHovered ? 0.95 : 0.6))
                 .frame(width: 15, height: 15)
                 .background(
-                    Circle().fill(.white.opacity(closeHovered ? 0.18 : 0.0))
+                    Circle().fill(Color.primary.opacity(closeHovered ? 0.18 : 0.0))
                 )
         }
         .buttonStyle(.plain)
+        .help("Remove from Group")
         .onHover { closeHovered = $0 }
     }
 
@@ -74,8 +75,8 @@ private extension View {
         let shape = Capsule(style: .continuous)
         let fill = isActive ? Theme.fillActive : (isHovered ? Theme.fillHover : Theme.fillIdle)
         return self
-            .background(shape.fill(.white.opacity(fill)))
-            .overlay(shape.stroke(.white.opacity(isActive ? Theme.strokeActive : Theme.strokeIdle),
+            .background(shape.fill(Color.primary.opacity(fill)))
+            .overlay(shape.stroke(Color.primary.opacity(isActive ? Theme.strokeActive : Theme.strokeIdle),
                                   lineWidth: 1))
     }
 }

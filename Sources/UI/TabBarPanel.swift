@@ -34,11 +34,9 @@ final class TabBarPanel: NSPanel {
         backgroundColor = .clear
         isOpaque = false
         hasShadow = true
-        appearance = NSAppearance(named: .darkAqua)
         collectionBehavior = [.fullScreenAuxiliary, .ignoresCycle]
 
-        let host = NSHostingView(rootView: TabStripView(model: model)
-            .environment(\.colorScheme, .dark))
+        let host = NSHostingView(rootView: TabStripView(model: model))
         host.translatesAutoresizingMaskIntoConstraints = false
         trackingContainer.addSubview(host)
         NSLayoutConstraint.activate([
@@ -130,8 +128,18 @@ final class TabBarPanel: NSPanel {
         collapseWatcher = nil
     }
 
+    /// `nil` appearance follows the system; SwiftUI inherits it.
+    var theme: StripTheme = .system {
+        didSet {
+            switch theme {
+            case .system: appearance = nil
+            case .dark: appearance = NSAppearance(named: .darkAqua)
+            case .light: appearance = NSAppearance(named: .aqua)
+            }
+        }
+    }
+
     func show() {
-        appearance = NSAppearance(named: .darkAqua)
         if !isVisible {
             orderFront(nil)
         }

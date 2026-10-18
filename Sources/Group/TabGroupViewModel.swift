@@ -14,6 +14,8 @@ final class TabGroupViewModel: ObservableObject, Identifiable {
 
     var onSelect: ((WindowID) -> Void)?
     var onClose: ((WindowID) -> Void)?
+    var onCloseWindow: ((WindowID) -> Void)?
+    var onReorder: ((WindowID, Int) -> Void)?
 
     var onMoveBegan: (() -> Void)?
     var onMoveChanged: ((CGSize) -> Void)?
@@ -23,6 +25,8 @@ final class TabGroupViewModel: ObservableObject, Identifiable {
 
     func select(_ id: WindowID) { onSelect?(id) }
     func close(_ id: WindowID) { onClose?(id) }
+    func closeWindow(_ id: WindowID) { onCloseWindow?(id) }
+    func reorder(_ id: WindowID, to index: Int) { onReorder?(id, index) }
     func activateActive() { onActivateActive?() }
 
     func moveBegan() { onMoveBegan?() }

@@ -68,12 +68,11 @@ extension TabGroupController {
     /// Park inactive tabs out of view without triggering AX clamping.
     private func parkOffscreen(_ window: ManagedWindow) {
         guard let frame = engine.frame(of: window) else { return }
-        let screen = NSScreen.screens.first { $0.frame.intersects(frame) }
-            ?? NSScreen.main ?? NSScreen.screens.first
-        guard let visible = screen?.visibleFrame else { return }
-        let parked = CGRect(x: visible.maxX - 1,
-                            y: visible.minY + 1 - frame.height,
-                            width: frame.width, height: frame.height)
+        // The window's own screen first, so it parks where it already is.
+        let own = NSScreen.screens.filter { $0.frame.intersects(frame) }
+        let rest = NSScreen.screens.filter { !$0.frame.intersects(frame) }
+        let screens = (own + rest).map { (frame: $0.frame, visible: $0.visibleFrame) }
+        guard let parked = ParkingSpot.frame(for: frame.size, screens: screens) else { return }
         engine.setFrame(parked, of: window)
     }
 
@@ -84,6 +83,18 @@ extension TabGroupController {
         if isGroupOnActiveSpace(group) {
             engine.activate(group.windows[idx])
         }
+    }
+
+    /// Move a tab to `index`, keeping the same window active.
+    func reorder(_ id: WindowID, to index: Int, in group: TabGroup) {
+        guard let from = group.windows.firstIndex(where: { $0.id == id }),
+              from != index, group.windows.indices.contains(index) else { return }
+        let active = group.activeWindow
+        group.windows.insert(group.windows.remove(at: from), at: index)
+        if let active, let newIndex = group.windows.firstIndex(where: { $0 === active }) {
+            group.activeIndex = newIndex
+        }
+        group.syncViewModel()
     }
 
     func untab(_ id: WindowID, from group: TabGroup) {

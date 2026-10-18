@@ -1,7 +1,7 @@
 import AppKit
 import CoreGraphics
 
-/// Reports a Command-drag window gesture.
+/// Reports a modifier-drag window gesture (⌘ by default).
 @MainActor
 protocol DragMonitorDelegate: AnyObject {
     func dragDidBegin(window: ManagedWindow?, at point: CGPoint)
@@ -10,10 +10,12 @@ protocol DragMonitorDelegate: AnyObject {
     func dragDidCancel()
 }
 
-/// Global Command-drag event tap.
+/// Global modifier-drag event tap.
 @MainActor
 final class DragMonitor {
     weak var delegate: DragMonitorDelegate?
+    /// Held during a drag to tab windows; `[drag] modifier` in the config.
+    var modifiers: CGEventFlags = .maskCommand
     private let engine: WindowEngine
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -87,13 +89,13 @@ final class DragMonitor {
         }
 
         let point = appKitPoint(fromCGEvent: event)
-        let commandIsDown = event.flags.contains(.maskCommand)
+        let modifierIsDown = event.flags.contains(modifiers)
 
         switch type {
         case .leftMouseDown:
             isMouseDown = true
             downPoint = point
-            pendingGesture = commandIsDown
+            pendingGesture = modifierIsDown
             return event
 
         case .leftMouseDragged:
@@ -101,7 +103,7 @@ final class DragMonitor {
                 delegate?.dragDidMove(to: point)
                 return nil
             }
-            if pendingGesture, commandIsDown,
+            if pendingGesture, modifierIsDown,
                hypot(point.x - downPoint.x, point.y - downPoint.y) > Self.dragThreshold {
                 pendingGesture = false
                 if beginTakeover(at: downPoint) {
@@ -122,15 +124,15 @@ final class DragMonitor {
             return event
 
         case .flagsChanged:
-            if isTakingOverDrag, !commandIsDown {
+            if isTakingOverDrag, !modifierIsDown {
                 isTakingOverDrag = false
                 delegate?.dragDidCancel()
-            } else if !isTakingOverDrag, commandIsDown, isMouseDown {
+            } else if !isTakingOverDrag, modifierIsDown, isMouseDown {
                 if beginTakeover(at: point) {
                     pendingGesture = false
                     delegate?.dragDidMove(to: point)
                 }
-            } else if pendingGesture, !commandIsDown {
+            } else if pendingGesture, !modifierIsDown {
                 pendingGesture = false
             }
             return event

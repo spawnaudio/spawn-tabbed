@@ -14,3 +14,7 @@ on first launch, grant **System Settings -> Privacy & Security -> Accessibility*
 hold ⌘ while dragging windows to create tab groups
 
 use kb shortcuts alt+1...n to switch between tabs, and alt+tab to cycle between tabs. configure other bindings in ~/.config/tabbed.toml. a config is created for you on first launch
+
+drag a tab sideways to reorder it; right-click a tab to remove it from the group or close the window
+
+in ~/.config/tabbed.toml you can also change the drag modifier (`[drag] modifier = "cmd"`) and the strip theme (`[appearance] theme = "system" | "dark" | "light"`)

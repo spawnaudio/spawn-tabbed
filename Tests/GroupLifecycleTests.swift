@@ -4,7 +4,7 @@ import XCTest
 
 /// In-memory window system: frames only, no AX or window server.
 @MainActor
-private final class FakeEngine: WindowEngine {
+final class FakeEngine: WindowEngine {
     var frames: [WindowID: CGRect] = [:]
 
     func window(at point: CGPoint, excluding: Set<WindowID>) -> ManagedWindow? { nil }
@@ -18,6 +18,7 @@ private final class FakeEngine: WindowEngine {
     func setFrame(_ frame: CGRect, of window: ManagedWindow) { frames[window.id] = frame }
     func raise(_ window: ManagedWindow) {}
     func activate(_ window: ManagedWindow) {}
+    func close(_ window: ManagedWindow) {}
     func isAlive(_ window: ManagedWindow) -> Bool { true }
     func refreshTitle(_ window: ManagedWindow) -> String { window.title }
     func spaceID(of window: ManagedWindow) -> UInt64? { nil }
@@ -69,5 +70,27 @@ final class GroupLifecycleTests: XCTestCase {
         XCTAssertTrue(controller.groups.isEmpty)
         XCTAssertEqual(engine.frames[1], shared)
         XCTAssertEqual(engine.frames[2], shared)
+    }
+}
+
+@MainActor
+final class ReorderTests: XCTestCase {
+    func test_reorder_movesTab_andKeepsActiveWindow() {
+        let engine = FakeEngine()
+        let controller = TabGroupController(engine: engine)
+        let windows = (1...3).map { id in
+            ManagedWindow(id: WindowID(id), pid: 1, element: AXUIElementCreateApplication(1),
+                          title: "w\(id)", appName: "App", appBundleID: nil)
+        }
+        for w in windows { engine.frames[w.id] = CGRect(x: 0, y: 0, width: 500, height: 400) }
+        controller.formGroup(dragged: windows[1], target: windows[0])
+        controller.formGroup(dragged: windows[2], target: windows[0])
+        let group = controller.groups[0]
+        XCTAssertEqual(group.activeWindow?.id, 3)
+
+        controller.reorder(3, to: 0, in: group)
+        XCTAssertEqual(group.windows.map(\.id), [3, 1, 2])
+        XCTAssertEqual(group.activeWindow?.id, 3)
+        XCTAssertEqual(group.viewModel.tabs.map(\.id), [3, 1, 2])
     }
 }

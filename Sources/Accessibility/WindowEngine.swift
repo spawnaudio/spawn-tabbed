@@ -66,6 +66,8 @@ protocol WindowEngine: AnyObject {
 
     func raise(_ window: ManagedWindow)
     func activate(_ window: ManagedWindow)
+    /// Press the window's close button, as if the user clicked it.
+    func close(_ window: ManagedWindow)
     func isAlive(_ window: ManagedWindow) -> Bool
     func refreshTitle(_ window: ManagedWindow) -> String
 
