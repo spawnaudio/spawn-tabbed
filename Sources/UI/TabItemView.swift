@@ -5,6 +5,7 @@ struct TabItemView: View {
     let isActive: Bool
     let isHovered: Bool
     let width: CGFloat
+    var mark: String?
     let onClose: () -> Void
 
     @State private var closeHovered = false
@@ -19,6 +20,15 @@ struct TabItemView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .foregroundStyle(Color.primary.opacity(textOpacity))
+
+                if let mark {
+                    Text(mark.uppercased())
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundStyle(Color.primary.opacity(0.8))
+                        .padding(.horizontal, 4)
+                        .background(Capsule().fill(Color.primary.opacity(0.15)))
+                        .help("Jump here with the marks shortcut + \(mark.uppercased())")
+                }
             }
             .padding(.horizontal, 22)
 

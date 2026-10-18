@@ -38,6 +38,12 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
     private var dragGrabOffset: CGSize = .zero
     private var dragTargets: [WindowFrame] = []
     var isApplyingLayout = false
+    var store = GroupStore() {
+        didSet { marks = store.loadMarks() }
+    }
+    lazy var marks: [String: GroupStore.WindowRef] = store.loadMarks()
+    /// Set while quitting, so dissolving groups doesn't erase the saved state.
+    var isQuitting = false
 
     var activeMoveTimer: Timer?
     weak var activeMoveGroup: TabGroup?
@@ -90,9 +96,8 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
         observeSpaceChanges()
         observeApplicationChanges()
         observeDisplayChanges()
-        if autoAddNewWindowsToStack {
-            observeRunningAppsForWindowCreation()
-        }
+        restoreSavedGroups()
+        updateWindowCreationObserving()
     }
 
     /// Re-read `~/.config/tabbed.toml` and apply any keyboard-shortcut changes.
@@ -100,6 +105,7 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
         config = TabbedConfig.load()
         keyboardMonitor.apply(settings: config.shortcuts)
         dragMonitor.modifiers = config.dragModifiers
+        updateWindowCreationObserving()
         for group in groups {
             group.panel.theme = config.theme
         }
@@ -207,8 +213,10 @@ final class TabGroupController: NSObject, DragMonitorDelegate {
         applyLayout(for: destination)
     }
 
-    private func wire(_ group: TabGroup) {
+    func wire(_ group: TabGroup) {
         group.panel.theme = config.theme
+        group.viewModel.marks = Dictionary(marks.map { ($0.value.id, $0.key) },
+                                           uniquingKeysWith: { a, _ in a })
         group.viewModel.onSelect = { [weak self, weak group] id in
             guard let self, let group else { return }
             self.selectTab(id, in: group)

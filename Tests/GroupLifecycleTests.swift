@@ -8,7 +8,9 @@ final class FakeEngine: WindowEngine {
     var frames: [WindowID: CGRect] = [:]
 
     func window(at point: CGPoint, excluding: Set<WindowID>) -> ManagedWindow? { nil }
-    func onScreenWindowFrames(excluding: Set<WindowID>) -> [WindowFrame] { [] }
+    func onScreenWindowFrames(excluding: Set<WindowID>) -> [WindowFrame] {
+        onScreen.filter { !excluding.contains($0.id) }
+    }
     func managedWindow(from element: AXUIElement, pid: pid_t) -> ManagedWindow? { nil }
     func frame(of window: ManagedWindow) -> CGRect? { frames[window.id] }
     func windowServerFrame(of id: WindowID) -> CGRect? { frames[id] }
@@ -24,6 +26,22 @@ final class FakeEngine: WindowEngine {
     func spaceID(of window: ManagedWindow) -> UInt64? { nil }
     func activeSpaceID() -> UInt64? { nil }
     func move(_ window: ManagedWindow, toSpaceOf reference: ManagedWindow) {}
+
+    /// Windows `managedWindow(id:pid:)` can find, as if their apps were running.
+    var live: [WindowID: ManagedWindow] = [:]
+    var onScreen: [WindowFrame] = []
+    func managedWindow(id: WindowID, pid: pid_t) -> ManagedWindow? { live[id] }
+}
+
+/// A throwaway defaults domain, so tests never touch the real app's saved groups.
+@MainActor
+func isolatedController(_ engine: FakeEngine) -> TabGroupController {
+    let controller = TabGroupController(engine: engine)
+    let name = "tabbed-tests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: name)!
+    defaults.removePersistentDomain(forName: name)
+    controller.store = GroupStore(defaults: defaults)
+    return controller
 }
 
 @MainActor
@@ -36,7 +54,7 @@ final class GroupLifecycleTests: XCTestCase {
 
     override func setUp() async throws {
         engine = FakeEngine()
-        controller = TabGroupController(engine: engine)
+        controller = isolatedController(engine)
         a = window(1)
         b = window(2)
         engine.frames = [1: shared, 2: CGRect(x: 0, y: 0, width: 300, height: 300)]
@@ -77,7 +95,7 @@ final class GroupLifecycleTests: XCTestCase {
 final class ReorderTests: XCTestCase {
     func test_reorder_movesTab_andKeepsActiveWindow() {
         let engine = FakeEngine()
-        let controller = TabGroupController(engine: engine)
+        let controller = isolatedController(engine)
         let windows = (1...3).map { id in
             ManagedWindow(id: WindowID(id), pid: 1, element: AXUIElementCreateApplication(1),
                           title: "w\(id)", appName: "App", appBundleID: nil)

@@ -11,6 +11,10 @@ protocol KeyboardShortcutMonitorDelegate: AnyObject {
     func keyboardShortcutSelectTab(at index: Int) -> Bool
     /// Move to the next (`forward`) or previous tab in the focused group.
     func keyboardShortcutCycleTab(forward: Bool) -> Bool
+    /// Tag the focused window with `letter`.
+    func keyboardShortcutAssignMark(_ letter: String) -> Bool
+    /// Bring forward the window tagged `letter`.
+    func keyboardShortcutJumpToMark(_ letter: String) -> Bool
 }
 
 /// Global keyDown tap that maps configured chords to tab actions.
@@ -30,6 +34,14 @@ final class KeyboardShortcutMonitor {
     /// Virtual key codes for the `1`…`9` number-row keys, in order.
     private static let numberKeyCodes: [Int64] = [18, 19, 20, 21, 23, 22, 26, 28, 25]
     private static let tabKeyCode: Int64 = 48
+
+    /// ANSI virtual key codes for a…z.
+    // ponytail: ANSI positions, so marks follow key position on non-QWERTY layouts.
+    static let letterKeyCodes: [Int64: String] = [
+        0: "a", 11: "b", 8: "c", 2: "d", 14: "e", 3: "f", 5: "g", 4: "h", 34: "i",
+        38: "j", 40: "k", 37: "l", 46: "m", 45: "n", 31: "o", 35: "p", 12: "q",
+        15: "r", 1: "s", 17: "t", 32: "u", 9: "v", 13: "w", 7: "x", 16: "y", 6: "z"
+    ]
 
     init(settings: ShortcutSettings) {
         self.settings = settings
@@ -116,6 +128,16 @@ final class KeyboardShortcutMonitor {
             // Only treat Shift as "reverse" when it isn't already part of the base chord.
             if !base.contains(.maskShift), flags == withShift {
                 return delegate.keyboardShortcutCycleTab(forward: false) ? nil : event
+            }
+        }
+
+        // Marks: assign + letter tags, jump + letter recalls.
+        if settings.marks, let letter = Self.letterKeyCodes[keyCode] {
+            if flags == settings.markAssign.intersection(Self.modifierMask) {
+                return delegate.keyboardShortcutAssignMark(letter) ? nil : event
+            }
+            if flags == settings.markJump.intersection(Self.modifierMask) {
+                return delegate.keyboardShortcutJumpToMark(letter) ? nil : event
             }
         }
 

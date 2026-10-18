@@ -11,12 +11,20 @@ struct ShortcutSettings: Equatable {
     var selectByNumber: Bool
     /// `modifier`+Tab / `modifier`+Shift+Tab cycle through the focused group.
     var cycle: Bool
+    /// rcmd-style marks: `markAssign`+letter tags the focused window,
+    /// `markJump`+letter brings it back from anywhere.
+    var marks: Bool
+    var markAssign: CGEventFlags
+    var markJump: CGEventFlags
 
     static let `default` = ShortcutSettings(
         enabled: true,
         modifiers: .maskAlternate,
         selectByNumber: true,
-        cycle: true
+        cycle: true,
+        marks: true,
+        markAssign: [.maskControl, .maskAlternate, .maskShift],
+        markJump: [.maskControl, .maskAlternate]
     )
 }
 
@@ -31,8 +39,11 @@ struct TabbedConfig: Equatable {
     /// Modifier(s) held while dragging a window onto another to tab it.
     var dragModifiers: CGEventFlags
     var theme: StripTheme
+    /// Bundle ids whose new windows tab together automatically.
+    var autoGroupBundleIDs: Set<String>
 
-    static let `default` = TabbedConfig(shortcuts: .default, dragModifiers: .maskCommand, theme: .system)
+    static let `default` = TabbedConfig(shortcuts: .default, dragModifiers: .maskCommand,
+                                        theme: .system, autoGroupBundleIDs: [])
 }
 
 extension TabbedConfig {
@@ -86,6 +97,16 @@ extension TabbedConfig {
            let modifiers = parseModifiers(raw) {
             shortcuts.modifiers = modifiers
         }
+        let marks = tables["marks"] ?? [:]
+        if let value = marks["enabled"]?.boolValue {
+            shortcuts.marks = value
+        }
+        if let raw = marks["assign"]?.stringValue, let flags = parseModifiers(raw) {
+            shortcuts.markAssign = flags
+        }
+        if let raw = marks["jump"]?.stringValue, let flags = parseModifiers(raw) {
+            shortcuts.markJump = flags
+        }
 
         var config = TabbedConfig.default
         config.shortcuts = shortcuts
@@ -96,6 +117,11 @@ extension TabbedConfig {
         if let raw = tables["appearance"]?["theme"]?.stringValue,
            let theme = StripTheme(rawValue: raw.lowercased()) {
             config.theme = theme
+        }
+        if let raw = tables["rules"]?["auto_group"]?.stringValue {
+            config.autoGroupBundleIDs = Set(raw.split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty })
         }
         return config
     }
@@ -119,10 +145,22 @@ extension TabbedConfig {
     # modifier + Tab / modifier + Shift + Tab cycle through the group.
     cycle = true
 
+    [marks]
+    # Tag any window with a letter, then jump back to it from anywhere.
+    # assign + letter tags the focused window; jump + letter brings it forward.
+    enabled = true
+    assign = "ctrl+alt+shift"
+    jump = "ctrl+alt"
+
     [drag]
     # Hold this while dragging a window onto another to tab them together.
     # Same names as above, e.g. "cmd", "ctrl+alt".
     modifier = "cmd"
+
+    [rules]
+    # New windows from these apps tab together automatically.
+    # Comma-separated bundle ids, e.g. "com.apple.Terminal, com.googlecode.iterm2".
+    auto_group = ""
 
     [appearance]
     # Tab strip colours: "system" follows macOS, or force "dark" / "light".

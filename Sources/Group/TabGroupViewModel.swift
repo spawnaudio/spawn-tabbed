@@ -8,6 +8,8 @@ final class TabGroupViewModel: ObservableObject, Identifiable {
 
     @Published var tabs: [TabDescriptor] = []
     @Published var activeID: WindowID?
+    /// Mark letter per window, shown as a badge on the tab.
+    @Published var marks: [WindowID: String] = [:]
 
     @Published var compact = false
     @Published var hovered = false

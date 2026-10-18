@@ -150,6 +150,11 @@ final class AXWindowEngine: WindowEngine {
         spaces.move(window: window.id, toSpaceOf: reference.id)
     }
 
+    func managedWindow(id: WindowID, pid: pid_t) -> ManagedWindow? {
+        guard pid != ownPID else { return nil }
+        return managedWindow(id: id, pid: pid, ownerInfo: [:])
+    }
+
     private func managedWindow(id: WindowID, pid: pid_t, ownerInfo: [String: Any]) -> ManagedWindow? {
         let appElement = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(appElement, 1.0)

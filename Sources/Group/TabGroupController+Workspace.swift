@@ -111,7 +111,7 @@ extension TabGroupController {
     }
 
     @objc func applicationDidLaunch(_ notification: Notification) {
-        guard autoAddNewWindowsToStack,
+        guard needsWindowCreationEvents,
               let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
             return
         }

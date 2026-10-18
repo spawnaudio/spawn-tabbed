@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import ServiceManagement
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -7,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var autoAddMenuItem: NSMenuItem?
     private var compactModeMenuItem: NSMenuItem?
     private var trustPollTimer: Timer?
+    private var launchAtLoginMenuItem: NSMenuItem?
     private let engine = AXWindowEngine()
     private lazy var controller = TabGroupController(engine: engine)
 
@@ -77,6 +79,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         compactItem.state = AppSettings.alwaysUseCompactMode ? .on : .off
         compactModeMenuItem = compactItem
 
+        let loginItem = menu.addItem(
+            withTitle: "Launch at Login",
+            action: #selector(toggleLaunchAtLogin),
+            keyEquivalent: ""
+        )
+        loginItem.target = self
+        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        launchAtLoginMenuItem = loginItem
+
         menu.addItem(.separator())
         menu.addItem(withTitle: "Edit Configuration…",
                      action: #selector(editConfig), keyEquivalent: "").target = self
@@ -102,6 +113,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let enabled = !controller.alwaysUseCompactMode
         controller.setAlwaysUseCompactMode(enabled)
         compactModeMenuItem?.state = enabled ? .on : .off
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        let service = SMAppService.mainApp
+        do {
+            if service.status == .enabled {
+                try service.unregister()
+            } else {
+                try service.register()
+            }
+        } catch {
+            NSLog("[Tabbed] launch at login: \(error)")
+        }
+        if service.status == .requiresApproval {
+            // macOS wants the user to allow it in Login Items first.
+            SMAppService.openSystemSettingsLoginItems()
+        }
+        launchAtLoginMenuItem?.state = service.status == .enabled ? .on : .off
     }
 
     @objc private func reloadConfig() {

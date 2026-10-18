@@ -46,6 +46,9 @@ protocol WindowEngine: AnyObject {
     /// Resolve a live AX window element into the app model.
     func managedWindow(from element: AXUIElement, pid: pid_t) -> ManagedWindow?
 
+    /// Resolve a window by id within its owning app, if it still exists.
+    func managedWindow(id: WindowID, pid: pid_t) -> ManagedWindow?
+
     /// Current frame in AppKit screen coordinates.
     func frame(of window: ManagedWindow) -> CGRect?
 

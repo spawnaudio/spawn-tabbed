@@ -59,6 +59,7 @@ struct TabStripView: View {
                     isActive: tab.id == model.activeID,
                     isHovered: tab.id == hoveredID,
                     width: width,
+                    mark: model.marks[tab.id],
                     onClose: { model.close(tab.id) }
                 )
                 .onHover { hoveredID = $0 ? tab.id : (hoveredID == tab.id ? nil : hoveredID) }

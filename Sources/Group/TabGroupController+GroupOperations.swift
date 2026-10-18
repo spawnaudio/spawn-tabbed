@@ -43,6 +43,7 @@ extension TabGroupController {
         guard isGroupOnActiveSpace(group), !group.isMinimized else {
             group.panel.hide()
             group.syncViewModel()
+            saveGroups()
             return
         }
 
@@ -63,6 +64,7 @@ extension TabGroupController {
         positionPanel(for: group)
         group.panel.show()
         group.syncViewModel()
+        saveGroups()
     }
 
     /// Park inactive tabs out of view without triggering AX clamping.
@@ -95,6 +97,7 @@ extension TabGroupController {
             group.activeIndex = newIndex
         }
         group.syncViewModel()
+        saveGroups()
     }
 
     func untab(_ id: WindowID, from group: TabGroup) {
@@ -136,6 +139,8 @@ extension TabGroupController {
 
     /// Dissolve every group, returning parked windows to the shared frame.
     func restoreAllWindows() {
+        saveGroups()
+        isQuitting = true
         for group in groups {
             dissolve(group)
         }
@@ -148,6 +153,7 @@ extension TabGroupController {
             engine.setFrame(group.contentFrame, of: window)
         }
         groups.removeAll { $0 === group }
+        saveGroups()
         updateFocusObservers()
     }
 }
